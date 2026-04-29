@@ -1,4 +1,4 @@
-import { renderToString, renderToReadableStream } from 'react-dom/server';
+import { renderToString } from 'react-dom/server';
 import { Link, Script, ViteClient } from 'vite-ssr-components/react';
 import { type RootView } from '@hono/inertia';
 import {
