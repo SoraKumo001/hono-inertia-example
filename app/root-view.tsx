@@ -24,17 +24,20 @@ export const rootView: RootView = async (page) => {
   });
 
   const { head, body } = res;
+  const html = renderToString(
+    <html>
+      <head>
+        <ViteClient />
+        <Link rel="stylesheet" href="/app/styles.css" />
+        <Script src="/app/client.tsx" />
+        <meta name="inertia-head-placeholder" />
+      </head>
+      <body dangerouslySetInnerHTML={{ __html: body }} />
+    </html>,
+  );
+
   return (
     "<!DOCTYPE html>\n" +
-    renderToString(
-      <html>
-        <head>
-          <ViteClient />
-          <Link rel="stylesheet" href="/app/styles.css" />
-          <Script src="/app/client.tsx" />
-        </head>
-        <body dangerouslySetInnerHTML={{ __html: body }} />
-      </html>,
-    )
+    html.replace('<meta name="inertia-head-placeholder"/>', head.join("\n"))
   );
 };
