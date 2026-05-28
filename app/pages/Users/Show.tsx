@@ -1,10 +1,9 @@
 import { Head, Link } from '@inertiajs/react'
 import type { PageProps } from '../../pages.gen'
-import Layout from '../Layout'
 
 export default function UsersShow({ user }: PageProps<'Users/Show'>) {
   return (
-    <Layout>
+    <>
       <Head title={user.name} />
       <p>
         <Link href="/users">← Back to users</Link>
@@ -16,6 +15,6 @@ export default function UsersShow({ user }: PageProps<'Users/Show'>) {
         <dt>Bio</dt>
         <dd>{user.bio}</dd>
       </dl>
-    </Layout>
+    </>
   )
 }

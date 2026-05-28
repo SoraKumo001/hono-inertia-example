@@ -1,6 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react'
 import type { PageProps } from '../../pages.gen'
-import Layout from '../Layout'
 
 export default function UsersNew({ values, errors }: PageProps<'Users/New'>) {
   const form = useForm({
@@ -12,7 +11,7 @@ export default function UsersNew({ values, errors }: PageProps<'Users/New'>) {
   const fieldErrors = errors
 
   return (
-    <Layout>
+    <>
       <Head title="New user" />
       <p>
         <Link href="/users">← Back to users</Link>
@@ -48,6 +47,6 @@ export default function UsersNew({ values, errors }: PageProps<'Users/New'>) {
           Create
         </button>
       </form>
-    </Layout>
+    </>
   )
 }

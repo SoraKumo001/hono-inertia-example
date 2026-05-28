@@ -1,12 +1,10 @@
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from './context';
+import { useEffect, useState } from "react";
 
 export const Counter = () => {
-  const count = useSelector((state: { count: number }) => state.count);
-  const dispatch = useDispatch<{ count: number }>();
+  const [count, setCount] = useState(0);
   useEffect(() => {
     const handle = setInterval(() => {
-      dispatch((v) => ({ ...v, count: v.count + 1 }));
+      setCount((v) => v + 1);
     }, 1000);
     return () => clearInterval(handle);
   }, []);
