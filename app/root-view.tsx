@@ -32,7 +32,6 @@ export const rootView: RootView = async (page) => {
           <ViteClient />
           <Link rel="stylesheet" href="/app/styles.css" />
           <Script src="/app/client.tsx" />
-          <body dangerouslySetInnerHTML={{ __html: head }} />
         </head>
         <body dangerouslySetInnerHTML={{ __html: body }} />
       </html>,
