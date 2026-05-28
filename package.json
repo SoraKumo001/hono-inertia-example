@@ -28,5 +28,10 @@
     "vite": "^8.0.10",
     "vite-ssr-components": "^0.6.1",
     "wrangler": "^4.17.0"
-  }
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/SoraKumo001/hono-inertia-example",
+  "author": "SoraKumo <info@croud.jp>",
+  "license": "MIT"
 }
