@@ -1,7 +1,20 @@
 import { Head, Link } from '@inertiajs/react';
-import type { PageProps } from '../../pages.gen';
+import { listUsers, type User } from '../../data';
 
-export default function UsersIndex({ users }: PageProps<'Users/Index'>) {
+export const route = {
+  path: '/users',
+  method: 'get' as const,
+};
+
+export const loader = async () => {
+  return { users: listUsers() };
+};
+
+type Props = {
+  users: User[];
+};
+
+export default function UsersIndex({ users }: Props) {
   return (
     <>
       <Head title='Users' />

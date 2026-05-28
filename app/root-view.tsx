@@ -1,15 +1,13 @@
-import { renderToString } from 'react-dom/server';
-import { Link, Script, ViteClient } from 'vite-ssr-components/react';
-import { type RootView } from '@hono/inertia';
+import { renderToString } from "react-dom/server";
+import { Link, Script, ViteClient } from "vite-ssr-components/react";
+import { type RootView } from "@hono/inertia";
 import {
   createInertiaApp,
   usePage,
   type ResolvedComponent,
-} from '@inertiajs/react';
+} from "@inertiajs/react";
 
 type Page = ReturnType<typeof usePage>;
-
-const pages = import.meta.glob('./pages/**/*.tsx', { eager: true });
 
 export const rootView: RootView = async (page) => {
   const res = await createInertiaApp({
@@ -17,7 +15,7 @@ export const rootView: RootView = async (page) => {
     render: renderToString,
     resolve: async (name) => {
       const pages = import.meta.glob<{ default: ResolvedComponent }>(
-        './pages/**/*.tsx',
+        "./pages/**/*.tsx",
       );
       const page = await pages[`./pages/${name}.tsx`]();
       return page.default;
@@ -27,13 +25,13 @@ export const rootView: RootView = async (page) => {
 
   const { head, body } = res;
   return (
-    '<!DOCTYPE html>\n' +
+    "<!DOCTYPE html>\n" +
     renderToString(
       <html>
         <head>
           <ViteClient />
-          <Link rel='stylesheet' href='/app/styles.css' />
-          <Script src='/app/client.tsx' />
+          <Link rel="stylesheet" href="/app/styles.css" />
+          <Script src="/app/client.tsx" />
           <body dangerouslySetInnerHTML={{ __html: head }} />
         </head>
         <body dangerouslySetInnerHTML={{ __html: body }} />

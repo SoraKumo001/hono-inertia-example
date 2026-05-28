@@ -1,45 +1,56 @@
-# hono-inertia-example
+# Hono + Inertia.js (React) Example
 
-[Hono](https://hono.dev) + [Inertia.js](https://inertiajs.com) (React) on Cloudflare Workers.
+This is an example application showcasing [Hono](https://hono.dev) combined with [Inertia.js](https://inertiajs.com) (React) running on Cloudflare Workers.
+
+It implements modern conventions like **Persistent Layouts** to maintain client-side state across navigation, and a **Remix-like dynamic routing system (Loader / Action pattern)**.
 
 ## Pages
-
 - `/` — Home
 - `/users` — Users list
 - `/users/:id` — User detail
 - `/users/new` — Create user (with `@hono/zod-validator`)
 
-## Develop
+---
+
+## Development
+
+Install dependencies and start the local development server:
 
 ```sh
-bun install
-bun run dev
+pnpm install
+pnpm run dev
 ```
 
-## Build & deploy
+## Build & Deploy
+
+Verify types, compile client/server bundles, and deploy to Cloudflare Workers:
 
 ```sh
-bun run build
-bun run deploy
+pnpm run typecheck
+pnpm run build
+pnpm run deploy
 ```
 
-## SSR
+---
 
-- app/root-view.tsx
+## Key Features & Architecture
+
+### 1. Server-Side Rendering (SSR)
+The initial HTML document is rendered on the server side using React's `renderToString` within Hono's middleware lifecycle.
+
+- **`app/root-view.tsx`**: Renders the outer HTML shell that mounts the Inertia React application.
 
 ```tsx
-import { renderToString } from 'react-dom/server';
-import { Link, Script, ViteClient } from 'vite-ssr-components/react';
-import { type RootView } from '@hono/inertia';
+import { renderToString } from "react-dom/server";
+import { Link, Script, ViteClient } from "vite-ssr-components/react";
+import { type RootView } from "@hono/inertia";
 import {
   createInertiaApp,
   usePage,
   type ResolvedComponent,
-} from '@inertiajs/react';
+} from "@inertiajs/react";
 
 type Page = ReturnType<typeof usePage>;
-
-const pages = import.meta.glob('./pages/**/*.tsx', { eager: true });
 
 export const rootView: RootView = async (page) => {
   const res = await createInertiaApp({
@@ -47,7 +58,7 @@ export const rootView: RootView = async (page) => {
     render: renderToString,
     resolve: async (name) => {
       const pages = import.meta.glob<{ default: ResolvedComponent }>(
-        './pages/**/*.tsx',
+        "./pages/**/*.tsx",
       );
       const page = await pages[`./pages/${name}.tsx`]();
       return page.default;
@@ -57,13 +68,13 @@ export const rootView: RootView = async (page) => {
 
   const { head, body } = res;
   return (
-    '<!DOCTYPE html>\n' +
+    "<!DOCTYPE html>\n" +
     renderToString(
       <html>
         <head>
           <ViteClient />
-          <Link rel='stylesheet' href='/app/styles.css' />
-          <Script src='/app/client.tsx' />
+          <Link rel="stylesheet" href="/app/styles.css" />
+          <Script src="/app/client.tsx" />
           <body dangerouslySetInnerHTML={{ __html: head }} />
         </head>
         <body dangerouslySetInnerHTML={{ __html: body }} />
@@ -73,102 +84,107 @@ export const rootView: RootView = async (page) => {
 };
 ```
 
-## Cross-page state sharing
+---
 
-- app/components/context.tsx
+### 2. Persistent Layouts
+To maintain state across page transitions (e.g., navigation menus, global loaders, or a ticking counter), we use Inertia's **Persistent Layouts**.
+
+- **`app/client.tsx`**: Sets up the persistent layout inside `resolve` so that the `Layout` component is not unmounted and remounted during navigation.
 
 ```tsx
-import { createContext, useContext, useRef } from 'react';
-import { useSyncExternalStore } from 'react';
-import { usePage } from '@inertiajs/react';
+import { createInertiaApp, type ResolvedComponent } from "@inertiajs/react";
+import { hydrateRoot } from "react-dom/client";
+import type { ReactNode } from "react";
+import Layout from "./pages/Layout";
 
-export type ContextType<T> = {
-  state: T;
-  storeChanges: Set<() => void>;
-  dispatch: (callback: (state: T) => T) => void;
-  subscribe: (onStoreChange: () => void) => () => void;
-};
+createInertiaApp({
+  resolve: async (name) => {
+    const pages = import.meta.glob<{ default: ResolvedComponent }>(
+      "./pages/**/*.tsx",
+    );
+    const page = await pages[`./pages/${name}.tsx`]();
+    // Wrap pages in a persistent layout if no custom layout is defined
+    page.default.layout = page.default.layout || ((page: ReactNode) => <Layout>{page}</Layout>);
+    return page.default;
+  },
+  setup({ el, App, props }) {
+    hydrateRoot(el, <App {...props} />);
+  },
+});
+```
 
-export const createStoreContext = <T,>(s: T) => {
-  const context = useRef<ContextType<T>>({
-    state: s,
-    storeChanges: new Set(),
-    dispatch: (callback) => {
-      context.state = callback(context.state);
-      context.storeChanges.forEach((storeChange) => storeChange());
-      globalState = context.state as never;
-    },
-    subscribe: (onStoreChange) => {
-      context.storeChanges.add(onStoreChange);
-      return () => {
-        context.storeChanges.delete(onStoreChange);
-      };
-    },
-  }).current;
-  return context;
-};
+Because `Layout` remains mounted during page transitions, the `Counter` component embedded in `Layout` maintains its current state (the counts are not reset to zero).
 
-export const StoreContext = createContext<ContextType<any>>(undefined as never);
+---
 
-var globalState: Record<string, unknown> | undefined;
+### 3. Remix-like Loader / Action Routing
+We've integrated a dynamic routing system where page components encapsulate their routing paths, server-side data fetching (`loader`), and data submission (`action`).
 
-export const StoreProvider = <T extends Record<string, unknown>>({
-  children,
-  initState,
-}: {
-  children: React.ReactNode;
-  initState: () => T;
-}) => {
-  if (!globalState) {
-    globalState = Object.assign({}, initState());
+#### Router Logic ([router.ts](file:///c:/prog/test/hono-inertia-example/app/router.ts))
+The routing registry scans the `pages` directory using Vite's `import.meta.glob`, reading metadata from page exports to dynamically mount Hono routes:
+
+```typescript
+for (const filePath in pages) {
+  const mod = pages[filePath]
+  const componentName = getComponentName(filePath)
+
+  // Dynamically register GET routes (routing & loader props)
+  if (mod.route) {
+    const { path, method = 'get' } = mod.route
+    app.on([method], [path], async (c) => {
+      let props = {}
+      if (mod.loader) {
+        const result = await mod.loader(c)
+        if (result instanceof Response) return result // Directly bypass responses (like 404 / redirects)
+        props = result
+      }
+      return c.render(componentName as keyof InertiaPages, props)
+    })
   }
-  const context = createStoreContext(globalState);
-  return (
-    <StoreContext.Provider value={context}>{children}</StoreContext.Provider>
-  );
-};
 
-export const useSelector = <T, R>(getSnapshot: (state: T) => R) => {
-  const context = useContext<ContextType<T>>(StoreContext);
-  return useSyncExternalStore(
-    context.subscribe,
-    () => getSnapshot(context.state),
-    () => getSnapshot(context.state),
-  );
-};
-
-export const useDispatch = <T,>() => {
-  const context = useContext<ContextType<T>>(StoreContext);
-  return context.dispatch;
-};
-
-export const useSharedState = <T extends Record<string, unknown>>() => {
-  const page = usePage();
-  const state = page.props.sharedState ?? {};
-  return {
-    state,
-    dispatch: (callback: (state: T) => T) => {
-      page.props.sharedState = callback(page.props.sharedState);
-    },
-  };
-};
+  // Dynamically register Action routes (POST/PUT/etc)
+  if (mod.action) {
+    const { path, method = 'post', handler } = mod.action
+    const handlers = Array.isArray(handler) ? handler : [handler]
+    app.on([method], [path], ...handlers)
+  }
+}
 ```
 
-- app/components/counter.tsx
+#### Page Component Implementation Example ([Index.tsx](file:///c:/prog/test/hono-inertia-example/app/pages/Users/Index.tsx))
+Page files export their path definition (`route`), fetching mechanism (`loader`), and the React view component:
 
 ```tsx
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from './context';
+import type { Context } from 'hono'
+import { listUsers, type User } from '../../data'
 
-export const Counter = () => {
-  const count = useSelector((state: { count: number }) => state.count);
-  const dispatch = useDispatch<{ count: number }>();
-  useEffect(() => {
-    const handle = setInterval(() => {
-      dispatch((v) => ({ ...v, count: v.count + 1 }));
-    }, 1000);
-    return () => clearInterval(handle);
-  }, []);
-  return <div>count:{count}</div>;
-};
+// Route configurations
+export const route = {
+  path: '/users',
+  method: 'get' as const
+}
+
+// Server-side loader
+export const loader = async (c: Context) => {
+  return { users: listUsers() }
+}
+
+// React component rendering the page
+type Props = { users: User[] }
+export default function UsersIndex({ users }: Props) {
+  return (
+    <>
+      <h1>Users</h1>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </>
+  )
+}
 ```
+
+This dynamic approach keeps code highly maintainable by grouping related UI and backend logic together in single files, and eliminates the need to manually declare routing inside [server.ts](file:///c:/prog/test/hono-inertia-example/app/server.ts).
+
+

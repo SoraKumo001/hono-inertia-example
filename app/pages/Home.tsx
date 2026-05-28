@@ -1,7 +1,19 @@
 import { Head } from "@inertiajs/react";
-import type { PageProps } from "../pages.gen";
 
-export default function Home({ message }: PageProps<"Home">) {
+export const route = {
+  path: "/",
+  method: "get" as const,
+};
+
+export const loader = async () => {
+  return { message: "Hono x Inertia" };
+};
+
+type Props = {
+  message: string;
+};
+
+export default function Home({ message }: Props) {
   return (
     <>
       <Head title="Home" />
